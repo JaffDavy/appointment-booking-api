@@ -1,0 +1,123 @@
+#!/usr/bin/env node
+/**
+ * bin/www  – Appointment‑Booking‑API  (ES‑module edition)
+ * ------------------------------------------------------------------
+ *  • Handles port normalisation
+ *  • Starts HTTP server after (future) DB bootstrap
+ *  • Adds graceful shutdown & error handling
+ * ------------------------------------------------------------------
+ */
+
+import http from 'node:http';
+import debugFactory from 'debug';
+import process from 'node:process';
+
+import app from '../app.js';
+import { winstonLogger as logger } from '../config/logger.js';   // make sure this exists
+
+const debug = debugFactory('appointment-booking-api:www');
+
+/* ------------------------------------------------------------------
+ * Helpers
+ * -----------------------------------------------------------------*/
+const normalizePort = (val) => {
+  const port = parseInt(val, 10);
+  if (Number.isNaN(port)) return val; // named pipe
+  if (port >= 0) return port;         // port number
+  return false;
+};
+
+/* ------------------------------------------------------------------
+ * Express & HTTP server
+ * -----------------------------------------------------------------*/
+let port = normalizePort(process.env.PORT || '3000');
+app.set('port', port);
+
+const server = http.createServer(app);
+
+/* ------------------------------------------------------------------
+ * Graceful shutdown
+ * -----------------------------------------------------------------*/
+const signals = { SIGHUP: 1, SIGINT: 2, SIGTERM: 15 };
+let shuttingDown = false;
+
+const shutdown = (signal) => {
+  if (shuttingDown) {
+    logger.info(`Shutdown already in progress – received ${signal} again.`);
+    return;
+  }
+  shuttingDown = true;
+
+  logger.info(`↪ ${signal} received → closing server…`);
+  server.close((err) => {
+    if (err) {
+      logger.error('Error during close:', err);
+      process.exit(1);
+    }
+    logger.info('Server closed. Bye 👋');
+    process.exit(0);
+  });
+};
+
+Object.keys(signals).forEach((sig) => process.on(sig, () => shutdown(sig)));
+
+/* ------------------------------------------------------------------
+ * Error / success events
+ * -----------------------------------------------------------------*/
+const onError = (error) => {
+  if (error.syscall !== 'listen') throw error;
+
+  const bind = typeof port === 'string' ? `Pipe ${port}` : `Port ${port}`;
+  switch (error.code) {
+    case 'EACCES':
+      logger.error(`${bind} requires elevated privileges`);
+      process.exit(1);
+      break;
+    case 'EADDRINUSE':
+      logger.error(`${bind} is already in use`);
+      port += 1;                     // naive retry
+      logger.info(`Retrying on port ${port}`);
+      startServer();                 // recall bootstrap
+      break;
+    default:
+      throw error;
+  }
+};
+
+const onListening = () => {
+  const addr = server.address();
+  const bind = typeof addr === 'string' ? `pipe ${addr}` : `port ${addr.port}`;
+  debug(`Listening on ${bind}`);
+  logger.info(`✅  Server listening on ${bind}`);
+};
+
+/* ------------------------------------------------------------------
+ * TEMP stubs – replace with real DB logic later
+ * -----------------------------------------------------------------*/
+async function connectToDb() {
+  logger.info('connectToDb stub → skipping DB connection');
+}
+
+async function initializeDbSchema() {
+  logger.info('initializeDbSchema stub → nothing to do');
+}
+
+/* ------------------------------------------------------------------
+ * Bootstrap sequence
+ * -----------------------------------------------------------------*/
+async function startServer() {
+  try {
+    logger.info('Connecting to DB…');
+    await connectToDb();          // remove stub once real function exists
+    await initializeDbSchema();   // idem
+    logger.info(`Starting server on port ${port}`);
+    server.listen(port);
+    server.on('error', onError);
+    server.on('listening', onListening);
+  } catch (err) {
+    logger.error('Startup failure:', err);
+    process.exit(1);
+  }
+}
+
+startServer();

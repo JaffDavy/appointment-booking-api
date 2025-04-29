@@ -4,12 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "NODE_ENV=test node --env-file=.env --test --experimental-test-coverage",
+    "test": "dotenv -e .env -- mocha \"tests/**/*.test.js\" --timeout 10000",
     "start": "node --env-file=.env ./bin/www",
     "dev": "nodemon --env-file=.env ./bin/www"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
+    "chai": "^5.2.0",
     "cookie-parser": "~1.4.4",
     "cors": "^2.8.5",
     "debug": "~2.6.9",
@@ -21,6 +22,10 @@
     "mongoose": "^8.13.2",
     "morgan": "~1.9.1",
     "nodemon": "^3.1.10",
+    "socket.io": "^4.8.1",
+    "supertest": "^7.1.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
     "winston": "^3.17.0"
   },
   "main": "app.js",
@@ -30,5 +35,9 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": ""
+  "description": "",
+  "devDependencies": {
+    "dotenv-cli": "^7.4.4",
+    "mocha": "^11.1.0"
+  }
 }

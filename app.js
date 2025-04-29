@@ -41,10 +41,20 @@ const swaggerOptions = {
         url: 'http://localhost:3000',
         description: 'Development server'
       }
-    ]
+    ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT'
+        }
+      }
+    }
   },
-  apis: ['./src/routes/*.js'] // Path to the API routes folders
+  apis: ['./routes/*.js']
 };
+
 
 const swaggerSpec = swaggerJSDoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

@@ -1,3 +1,4 @@
+
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
@@ -10,8 +11,6 @@ import createError from 'http-errors';
 import http from 'http';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJSDoc from 'swagger-jsdoc';
-import dotenv from 'dotenv';
-dotenv.config();
 
 // Import our modules
 import authRoutes from './routes/auth.js';
@@ -40,23 +39,13 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: 'http://localhost:3000',
-        description: 'Development server'
+        url: process.env.API_URL || 'http://localhost:3000',
+        description: 'API Server'
       }
-    ],
-    components: {
-      securitySchemes: {
-        bearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT'
-        }
-      }
-    }
+    ]
   },
-  apis: ['./routes/*.js']
+  apis: ['./src/routes/*.js'] // Path to the API routes folders
 };
-
 
 const swaggerSpec = swaggerJSDoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
@@ -70,7 +59,20 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use(express.static(join(__dirname, '../public')));
+
+// Only try to use static files if they exist
+try {
+  const publicPath = join(__dirname, '../public');
+  const fs = require('fs');
+  if (fs.existsSync(publicPath)) {
+    app.use(express.static(publicPath));
+    winstonLogger.info(`Serving static files from: ${publicPath}`);
+  } else {
+    winstonLogger.warn(`Public directory not found at: ${publicPath}`);
+  }
+} catch (err) {
+  winstonLogger.error(`Error setting up static files: ${err.message}`);
+}
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -82,9 +84,31 @@ app.get('/api/test', (req, res) => {
     res.json({ message: 'API is working' });
 });
 
-// SPA fallback - Serve static HTML for any other route
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../public/index.html'));
+// Root route - return JSON instead of trying to serve index.html
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Schedule Sync API is running',
+    documentation: '/api-docs',
+    test: '/api/test'
+  });
+});
+
+// SPA fallback - Only try to serve if public directory exists
+app.get('*', (req, res, next) => {
+  try {
+    const publicPath = join(__dirname, '../public');
+    const indexPath = join(publicPath, 'index.html');
+    const fs = require('fs');
+    
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      // If index.html doesn't exist, return a 404 JSON response
+      res.status(404).json({ message: 'Resource not found', path: req.path });
+    }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // Error handling
@@ -102,17 +126,18 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     winstonLogger.info(`Server is running on port ${PORT}`);
     winstonLogger.info('Test the endpoints with Thunder Client:');
-    winstonLogger.info('API documentation available at: http://localhost:3000/api-docs');
+    winstonLogger.info(`API documentation available at: ${process.env.API_URL || 'http://localhost:3000'}/api-docs`);
 });
 
-// MongoDB Connection
-mongoose.connect('mongodb://localhost:27017/schedule_sync', {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-}).then(() => {
-    winstonLogger.info('Connected to MongoDB');
-}).catch((err) => {
+// MongoDB Connection - Use environment variable for MongoDB URI
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/schedule_sync';
+mongoose.connect(MONGODB_URI, {})
+  .then(() => {
+    winstonLogger.info(`Connected to MongoDB at ${MONGODB_URI}`);
+  })
+  .catch((err) => {
     winstonLogger.error('MongoDB connection error:', err);
-});
+    winstonLogger.info('API will continue to run without database connection. Some features may not work.');
+  });
 
 export default app;

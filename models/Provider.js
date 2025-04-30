@@ -13,15 +13,15 @@ const providerSchema = new Schema({
     }],
     availability: [{
         dayOfWeek: {
-            type: Number, // 0-6 for Sunday to Saturday
+            type: Number,
             required: true
         },
         startTime: {
-            type: String, // Format: "HH:MM" in 24 hour format
+            type: String,
             required: true
         },
         endTime: {
-            type: String, // Format: "HH:MM" in 24 hour format
+            type: String,
             required: true
         }
     }],

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schedule Sync API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        h2 {
+            color: #3498db;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .endpoint {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f1f9ff;
+            border-left: 4px solid #3498db;
+            border-radius: 4px;
+        }
+        .method {
+            font-weight: bold;
+            color: #e74c3c;
+        }
+        .url {
+            font-family: monospace;
+            background: #eee;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        .nav {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .nav a {
+            margin: 0 10px;
+            color: #3498db;
+            text-decoration: none;
+        }
+        .nav a:hover {
+            text-decoration: underline;
+        }
+        .notification {
+            padding: 10px;
+            background-color: #dff0d8;
+            border: 1px solid #d6e9c6;
+            color: #3c763d;
+            border-radius: 4px;
+            margin: 10px 0;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Schedule Sync API</h1>
+        
+        <div class="nav">
+            <a href="/">API Documentation</a>
+            <a href="/dashboard.html">Dashboard</a>
+            <a href="/register.html">Register</a>
+            <a href="/api-docs/">Swagger Docs</a>
+        </div>
+
+        <div id="notification" class="notification"></div>
+        
+        <h2>Authentication Endpoints</h2>
+        <div class="endpoint">
+            <p><span class="method">POST</span> <span class="url">/api/auth/register</span></p>
+            <pre>
+Body: {
+    "name": "John Doe",
+    "email": "john@example.com",
+    "password": "password123",
+    "role": "user" // or "provider"
+}</pre>
+        </div>
+        
+        <div class="endpoint">
+            <p><span class="method">POST</span> <span class="url">/api/auth/login</span></p>
+            <pre>
+Body: {
+    "email": "john@example.com",
+    "password": "password123"
+}</pre>
+        </div>
+        
+        <div class="endpoint">
+            <p><span class="method">GET</span> <span class="url">/api/auth/me</span></p>
+            <p>Headers: <code>x-auth-token: YOUR_JWT_TOKEN</code></p>
+        </div>
+        
+        <h2>Time Slot Management Endpoints</h2>
+        <div class="endpoint">
+            <p><span class="method">POST</span> <span class="url">/api/timeslots</span></p>
+            <p>Headers: <code>x-auth-token: PROVIDER_JWT_TOKEN</code></p>
+            <pre>
+Body: {
+    "startTime": "2024-04-26T10:00:00Z",
+    "endTime": "2024-04-26T11:00:00Z"
+}</pre>
+        </div>
+        
+        <div class="endpoint">
+            <p><span class="method">GET</span> <span class="url">/api/timeslots/provider/:providerId</span></p>
+            <p>Get all available time slots for a specific provider</p>
+        </div>
+        
+        <div class="endpoint">
+            <p><span class="method">GET</span> <span class="url">/api/timeslots/appointments</span></p>
+            <p>Headers: <code>x-auth-token: YOUR_JWT_TOKEN</code></p>
+            <p>Get all appointments for the current user (or all time slots if provider)</p>
+        </div>
+        
+        <div class="endpoint">
+            <p><span class="method">POST</span> <span class="url">/api/timeslots/:timeSlotId/book</span></p>
+            <p>Headers: <code>x-auth-token: USER_JWT_TOKEN</code></p>
+            <p>Book a specific time slot</p>
+        </div>
+
+        <div class="endpoint">
+            <p><span class="method">POST</span> <span class="url">/api/timeslots/:timeSlotId/cancel</span></p>
+            <p>Headers: <code>x-auth-token: YOUR_JWT_TOKEN</code></p>
+            <p>Cancel a booked appointment (can be done by the booker or provider)</p>
+        </div>
+
+        <h2>Real-time Notifications</h2>
+        <p>Connect to WebSocket to receive real-time notifications about appointments:</p>
+        <pre>
+// Client-side code
+const socket = io('http://localhost:3000');
+
+// Join your user-specific notification room
+socket.emit('join', `user_${userId}`);
+
+// Listen for notifications
+socket.on('notification', (data) => {
+  console.log('Notification:', data);
+});
+</pre>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+    <script>
+        // Check if user is logged in
+        const token = localStorage.getItem('token');
+        if (token) {
+            try {
+                // Decode the JWT to get userId
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                
+                const { userId } = JSON.parse(jsonPayload);
+                
+                // Connect to Socket.IO server
+                const socket = io();
+                
+                // Join user-specific room
+                socket.emit('join', `user_${userId}`);
+                
+                // Listen for notifications
+                socket.on('notification', function(notification) {
+                    const notificationElement = document.getElementById('notification');
+                    notificationElement.textContent = `${notification.type}: ${JSON.stringify(notification.data)}`;
+                    notificationElement.style.display = 'block';
+                    
+                    // Hide notification after 5 seconds
+                    setTimeout(() => {
+                        notificationElement.style.display = 'none';
+                    }, 5000);
+                });
+            } catch (error) {
+                console.error('Failed to initialize WebSocket connection:', error);
+            }
+        }
+    </script>
+</body>
+</html>

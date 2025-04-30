@@ -11,6 +11,10 @@ export const connectToDb = async () => {
     logger.info('🔌  Mongo already connected – skipping second connect');
     return;
   }
+  if (!MONGO_URI) {
+    logger.error('❌ MONGO_URI not found in environment variables');
+    process.exit(1);
+  }  
 
   try {
     logger.info('Connecting to DB…');

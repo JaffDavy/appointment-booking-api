@@ -1,6 +1,8 @@
 import http from 'node:http';
 import debugFactory from 'debug';
 import process from 'node:process';
+import dotenv from 'dotenv';
+dotenv.config();
 
 import app from '../app.js';
 import { winstonLogger as logger } from '../config/logger.js';

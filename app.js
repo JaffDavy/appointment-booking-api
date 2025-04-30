@@ -10,6 +10,8 @@ import createError from 'http-errors';
 import http from 'http';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJSDoc from 'swagger-jsdoc';
+import dotenv from 'dotenv';
+dotenv.config();
 
 // Import our modules
 import authRoutes from './routes/auth.js';
